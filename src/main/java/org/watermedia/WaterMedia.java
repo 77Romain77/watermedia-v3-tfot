@@ -8,13 +8,16 @@ import me.srrapero720.waterconfig.WaterConfig;
 import org.watermedia.api.WaterMediaAPI;
 import org.watermedia.api.codecs.CodecsAPI;
 import org.watermedia.api.media.MediaAPI;
+import org.watermedia.api.media.players.FFMediaPlayer;
 import org.watermedia.api.platform.PlatformAPI;
 import org.watermedia.api.network.NetworkAPI;
 import org.watermedia.binaries.WaterMediaBinaries;
 import org.watermedia.tools.IOTool;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -67,9 +70,9 @@ public class WaterMedia {
      *                   off all the client side features and locks the class loading of them
      */
     public static synchronized void start(final String name, final Path tmp, final Path cwd, final boolean clientSide) {
-         Objects.requireNonNull(name, "Name of the environment cannot be null");
-         if (name.isBlank()) throw new IllegalArgumentException("Name of the environment cannot be empty");
-         WaterMedia.instance = new WaterMedia(name, tmp, cwd, clientSide);
+          Objects.requireNonNull(name, "Name of the environment cannot be null");
+          if (name.isBlank()) throw new IllegalArgumentException("Name of the environment cannot be empty");
+          WaterMedia.instance = new WaterMedia(name, tmp, cwd, clientSide);
 
         LOGGER.info(IT, "Running '{} v{}' for '{}' in {} side", NAME, VERSION, instance.name, instance.clientSide ? "client" : "server");
         LOGGER.info(IT, "OS Detected: {} ({}) - Java: {}", System.getProperty("os.name"), System.getProperty("os.arch"), System.getProperty("java.version"));
@@ -93,6 +96,8 @@ public class WaterMedia {
             WaterConfig.init();
             WaterConfig.registerBlocking(WaterMediaConfig.class);
         }
+
+        applyRuntimeTestOptions();
 
         // PRE-LOAD: each API computes its own step count up-front so progress UIs
         // can read steps() before any work begins.
@@ -118,6 +123,23 @@ public class WaterMedia {
         }
 
         LOGGER.info(IT, "{} initialized successfully", NAME);
+    }
+
+    private static void applyRuntimeTestOptions() {
+        if (!WaterMediaConfig.media.forceSoftwareDecoding) {
+            LOGGER.info(IT, "TFOT software decoding test disabled; hardware video decoding remains available");
+            return;
+        }
+
+        try {
+            final Field field = FFMediaPlayer.class.getDeclaredField("VIDEO_HW_CODECS");
+            field.setAccessible(true);
+            final int[] hardwareCodecs = (int[]) field.get(null);
+            Arrays.fill(hardwareCodecs, -1);
+            LOGGER.warn(IT, "TFOT software decoding test enabled: FFMediaPlayer hardware video devices disabled at runtime");
+        } catch (final Throwable throwable) {
+            LOGGER.error(IT, "TFOT software decoding test failed: unable to disable FFMediaPlayer hardware devices", throwable);
+        }
     }
 
     public static String toId(final String path) { return WaterMedia.ID + ":" + path; }
