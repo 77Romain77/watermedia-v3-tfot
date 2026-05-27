@@ -53,6 +53,11 @@ public class WaterMediaConfig {
         public boolean disableFFMPEG = false;
 
         @Spec.Field
+        @Comment("TFOT test option: disables FFmpeg hardware video decoding and forces software decoding")
+        @Comment("Use this to test texture=0 / buffering issues in WaterVision")
+        public boolean forceSoftwareDecoding = true;
+
+        @Spec.Field
         @Comment("Configures how many audio packets read when video has an audio slave")
         @Comment("Increment this value if you find YouTube videos with slow playback")
         @NumberConditions(minInt = 1, maxInt = 12)
